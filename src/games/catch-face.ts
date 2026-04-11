@@ -1,4 +1,5 @@
 import { KAPLAYCtx } from "kaplay";
+import { useVirtualGamepad } from "../components/VirtualGamepad";
 
 
 export function registerCatchFaceGame(k: KAPLAYCtx) {
@@ -6,6 +7,14 @@ export function registerCatchFaceGame(k: KAPLAYCtx) {
     k.scene("catch-face", () => {
     
         loadSprites(k);
+
+        useVirtualGamepad(k, {
+            targetTag: "jugador",
+            showDPad: true, 
+            showPrimary: true, 
+            showSecondary: true
+        });
+        
         //game data
         const VELOCIDAD = 1000;
         var scoreCounter: number = 0;
@@ -68,16 +77,32 @@ export function registerCatchFaceGame(k: KAPLAYCtx) {
             "jugador"
         ]);
 
-        k.onKeyDown("left", () => {
+        k.on("move_left", "jugador", () => {
             if(jugador.pos.x > 100){
                 jugador.move(-VELOCIDAD, 0)
             }
         }); 
 
-        k.onKeyDown("right", () => {
+        k.on("move_right", "jugador", () => {
             if (jugador.pos.x < k.width() - 100) {
                 jugador.move(VELOCIDAD, 0);
             }
+        });
+
+        k.on("move_up", "jugador", () => {
+            k.debug.log("move_up");
+        }); 
+
+        k.on("move_down", "jugador", () => {
+            k.debug.log("move_down");
+        });
+
+        k.on("primary_action", "jugador", () => {
+            k.debug.log("primary_action");
+        }); 
+
+        k.on("secondary_action", "jugador", () => {
+            k.debug.log("secondary_action");
         });
 
 
