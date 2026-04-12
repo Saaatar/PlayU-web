@@ -6,4 +6,4 @@ export interface GamepadConfig {
   enableKeyboard?: boolean;
   controlsOpacity?: number;
   buttonsRadius?: number;
-}
+
