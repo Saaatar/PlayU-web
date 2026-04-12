@@ -2,8 +2,8 @@ import kaplay from "kaplay";
 import { registerCatchFaceGame } from "./games/catch-face";
 
 const k = kaplay({
-    global: false, 
-    touchToMouse: true
+  global: false,
+  touchToMouse: true,
 });
 
 k.loadRoot("./");
@@ -12,5 +12,5 @@ k.loadRoot("./");
 registerCatchFaceGame(k);
 
 //must be go to menu scene by default
-k.go("catch-face"); 
+k.go("catch-face");
 export default k;
