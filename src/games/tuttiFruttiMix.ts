@@ -1,6 +1,6 @@
 import type { KAPLAYCtx } from "kaplay";
 
-export function initGame(k: KAPLAYCtx) {
+export function registerTuttiFruttiMix(k: KAPLAYCtx) {
   /*
     const k = kaplay({
     canvas: canvasElement,
@@ -140,7 +140,8 @@ export function initGame(k: KAPLAYCtx) {
     });
   });
 
+  /*
   k.go("main");
 
-  return k;
+  return k;*/
 }
