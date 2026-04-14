@@ -26,7 +26,7 @@ export function registerTuttiFruttiMix(k: KAPLAYCtx) {
   ];
 
   k.scene("start-tutifruti", () => {
-    const posicionesSlots = [
+    /*const posicionesSlots = [
       k.vec2(200, 300),
       k.vec2(330, 300),
       k.vec2(460, 300),
@@ -35,34 +35,61 @@ export function registerTuttiFruttiMix(k: KAPLAYCtx) {
       k.vec2(330, 430),
       k.vec2(460, 430),
       k.vec2(590, 430),
-    ];
-
+    ];*/
     const instruccion = k.add([
       k.text("¡MEMORIZA LAS POSICIONES!", { size: 32, font: "sans-serif" }),
-      k.pos(400, 100),
+      k.pos(k.width() * 0.5, k.height() * 0.2),
       k.anchor("center"),
       k.color(255, 200, 50),
     ]);
 
+    //posiciones de tablero
+    const totalSlots = 8;
+    const columnas = 4;
+
+    // Espaciado del tablero
+    const espaciadoX = k.width() * 0.12;
+    const espaciadoY = k.height() * 0.25;
+
+    // EL SECRETO: El cuadro ahora escala según la pantalla (nunca será más grande que su espacio)
+    const tamanoSlot = espaciadoX * 0.8;
+
+    // Movemos el centro del tablero al 65% de la pantalla para dejar libre el lado izquierdo
+    const centroDerecho = k.width() * 0.5;
+    const startX = centroDerecho - (espaciadoX * (columnas - 1)) / 2;
+    const startY = k.height() * 0.35;
+
+    const posicionesSlots: any[] = [];
+
+    for (let i = 0; i < totalSlots; i++) {
+      const col = i % columnas;
+      const fila = Math.floor(i / columnas);
+      const posX = startX + col * espaciadoX;
+      const posY = startY + fila * espaciadoY;
+      posicionesSlots.push(k.vec2(posX, posY));
+    }
     // Tablero
     const frutasAleatorias = k.shuffle([...fruitsName]);
-    const frutasMemoria = frutasAleatorias.map((fruta, index) => {
+
+    frutasAleatorias.forEach((fruta, index) => {
       k.add([
-        k.rect(100, 100, { radius: 12 }),
+        // Usamos el tamaño dinámico. El radio del borde también escala.
+        k.rect(tamanoSlot, tamanoSlot, { radius: Math.max(4, tamanoSlot * 0.1) }),
         k.pos(posicionesSlots[index]),
         k.anchor("center"),
         k.color(30, 40, 60),
-        k.outline(4, k.rgb(70, 80, 110)),
+        k.outline(3, k.rgb(70, 80, 110)),
         k.area(),
         "slot",
         { frutaCorrecta: fruta },
       ]);
 
-      return k.add([
+      k.add([
         k.sprite(fruta),
         k.pos(posicionesSlots[index]),
         k.anchor("center"),
-        k.scale(1),
+        // Escala la fruta basada en el tamaño del recuadro (asumiendo que tu sprite mide ~100px)
+        k.scale(tamanoSlot / 100),
         "fruta_memoria",
       ]);
     });
@@ -72,13 +99,29 @@ export function registerTuttiFruttiMix(k: KAPLAYCtx) {
       instruccion.color = k.rgb(50, 255, 50);
 
       k.destroyAll("fruta_memoria");
+      const frutasOpciones = k.shuffle([...fruitsName]);
 
-      fruitsName.forEach((fruta, index) => {
+      const columnasIzquierda = 2;
+      const espacioOpcX = k.width() * 0.1; // Espacio entre las 2 columnas
+      const espacioOpcY = k.height() * 0.15; // Espacio vertical (4 filas)
+
+      // El centro de las opciones estará en el 20% del ancho de la pantalla (Lado Izquierdo)
+      const centroIzquierdo = k.width() * 0.1;
+      const startOpcionesX = centroIzquierdo - (espacioOpcX * (columnasIzquierda - 1)) / 2;
+      const startOpcionesY = startY; // Empiezan a la misma altura que el tablero
+
+      frutasOpciones.forEach((fruta, index) => {
+        const col = index % columnasIzquierda;
+        const fila = Math.floor(index / columnasIzquierda);
+
+        const posX = startOpcionesX + col * espacioOpcX;
+        const posY = startOpcionesY + fila * espacioOpcY;
+
         k.add([
           k.sprite(fruta),
-          k.pos(100, 150 + index * 50),
+          k.pos(posX, posY), // ERROR CORREGIDO: Ya no usa posicionesSlots[index]
           k.anchor("center"),
-          k.scale(0.8),
+          k.scale(tamanoSlot / 100), // Mantiene la misma escala que el tablero
           k.area(),
           "fruta_jugable",
           { nombre: fruta },

@@ -2,9 +2,7 @@ import type { KAPLAYCtx } from "kaplay";
 
 const ANIMALS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼"];
 const COLS = 4;
-const CARD_W = 110;
-const CARD_H = 110;
-const GAP = 20;
+const ROWS = 4; // 8 animales x 2 = 16 cartas, que equivalen a 4 filas
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -17,8 +15,25 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function registerMemocatGame(k: KAPLAYCtx) {
   k.scene("memorama", () => {
-    const OFFSET_X = (k.width() - (COLS * CARD_W + (COLS - 1) * GAP)) / 2;
-    const OFFSET_Y = (k.height() - (4 * CARD_H + 3 * GAP)) / 2;
+    // 1. CÁLCULOS DINÁMICOS DE TAMAÑO
+    // El espacio entre cartas será el 2% del ancho de la pantalla
+    const GAP = k.width() * 0.02;
+
+    // Calculamos el tamaño máximo que podría tener la carta a lo ancho (dejando 10% de margen)
+    const maxCardW = (k.width() * 0.9 - GAP * (COLS - 1)) / COLS;
+    // Calculamos el tamaño máximo a lo alto (dejando 20% de margen para que no toque el techo/piso)
+    const maxCardH = (k.height() * 0.8 - GAP * (ROWS - 1)) / ROWS;
+
+    // Tomamos el menor de los dos para asegurar que la carta sea un cuadrado perfecto que quepa en ambos sentidos
+    const CARD_SIZE = Math.min(maxCardW, maxCardH);
+
+    // 2. CÁLCULO PARA CENTRAR LA CUADRÍCULA
+    const gridW = COLS * CARD_SIZE + (COLS - 1) * GAP;
+    const gridH = ROWS * CARD_SIZE + (ROWS - 1) * GAP;
+
+    const OFFSET_X = (k.width() - gridW) / 2;
+    const OFFSET_Y = (k.height() - gridH) / 2;
+
     const deck = shuffle([...ANIMALS, ...ANIMALS]);
 
     let flipped: any[] = [];
@@ -26,23 +41,19 @@ export function registerMemocatGame(k: KAPLAYCtx) {
     let moves = 0;
     let locked = false;
 
-    /*const labelMoves = k.add([
-      k.text("Movimientos: 0", { size: 20 }),
-      k.pos(400, 30),
-      k.anchor("center"),
-      k.color(255, 255, 255),
-    ]);*/
-
     deck.forEach((animal, i) => {
       const col = i % COLS;
       const row = Math.floor(i / COLS);
-      const x = OFFSET_X + col * (CARD_W + GAP) + CARD_W / 2;
-      const y = OFFSET_Y + row * (CARD_H + GAP) + CARD_H / 2;
+
+      // Sumamos la mitad del CARD_SIZE al final porque el ancla es "center"
+      const x = OFFSET_X + col * (CARD_SIZE + GAP) + CARD_SIZE / 2;
+      const y = OFFSET_Y + row * (CARD_SIZE + GAP) + CARD_SIZE / 2;
 
       const card: any = { animal, revealed: false, matched: false };
 
       card.bg = k.add([
-        k.rect(CARD_W, CARD_H, { radius: 8 }),
+        // Usamos el tamaño dinámico para la carta y adaptamos el radio del borde
+        k.rect(CARD_SIZE, CARD_SIZE, { radius: CARD_SIZE * 0.08 }),
         k.pos(x, y),
         k.anchor("center"),
         k.color(60, 80, 160),
@@ -51,10 +62,12 @@ export function registerMemocatGame(k: KAPLAYCtx) {
         { cardRef: card },
       ]);
 
-      card.emoji = k.add([k.text("", { size: 48 }), k.pos(x, y), k.anchor("center")]);
+      // Hacemos que el tamaño del emoji sea la mitad del tamaño de la carta
+      card.emoji = k.add([k.text("", { size: CARD_SIZE * 0.5 }), k.pos(x, y), k.anchor("center")]);
 
+      // Hacemos lo mismo para el signo de interrogación
       card.question = k.add([
-        k.text("?", { size: 40 }),
+        k.text("?", { size: CARD_SIZE * 0.4 }),
         k.pos(x, y),
         k.anchor("center"),
         k.color(180, 200, 255),
@@ -98,31 +111,31 @@ export function registerMemocatGame(k: KAPLAYCtx) {
       flipped.push(card);
       if (flipped.length === 2) {
         moves++;
-        //labelMoves.text = `Movimientos: ${moves}`;
         locked = true;
         k.wait(0.8, checkMatch);
       }
     });
   });
 
+  // 3. PANTALLA DE VICTORIA DINÁMICA
   k.scene("memorama-win", ({ moves }: { moves: number }) => {
     k.add([
-      k.text("¡Ganaste! 🎉", { size: 48 }),
-      k.pos(400, 240),
+      k.text("¡Ganaste! 🎉", { size: Math.min(k.width() * 0.1, 48) }), // Escala el texto en móviles
+      k.pos(k.center().x, k.height() * 0.35), // Centrado en X, al 35% de la altura
       k.anchor("center"),
       k.color(255, 220, 50),
     ]);
 
     k.add([
-      k.text(`${moves} movimientos`, { size: 24 }),
-      k.pos(400, 300),
+      k.text(`${moves} movimientos`, { size: Math.min(k.width() * 0.05, 24) }),
+      k.pos(k.center().x, k.height() * 0.5),
       k.anchor("center"),
       k.color(200, 200, 255),
     ]);
 
     k.add([
-      k.text("[ jugar de nuevo ]", { size: 20 }),
-      k.pos(400, 360),
+      k.text("[ jugar de nuevo ]", { size: Math.min(k.width() * 0.06, 20) }),
+      k.pos(k.center().x, k.height() * 0.65),
       k.anchor("center"),
       k.color(100, 180, 255),
       k.area(),
