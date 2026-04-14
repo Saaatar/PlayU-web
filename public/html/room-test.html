@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game Lobby</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      :root {
+        --primary: #6366f1;
+        --bg: #0f172a;
+        --card: #1e293b;
+        --text: #f8fafc;
+      }
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+        padding: 40px;
+      }
+      .container {
+        width: 100%;
+        max-width: 400px;
+      }
+      .card {
+        background: var(--card);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        margin-bottom: 20px;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 6px;
+        border: 1px solid #334155;
+        background: #0f172a;
+        color: white;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.3s;
+        margin-top: 5px;
+      }
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+      }
+      .btn-secondary {
+        background: #334155;
+        color: white;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .player-item {
+        padding: 8px;
+        border-bottom: 1px solid #334155;
+        display: flex;
+        justify-content: space-between;
+      }
+      .me {
+        color: var(--primary);
+        font-weight: bold;
+      }
+      .status-tag {
+        font-size: 0.8rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: #22c55e;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card" id="setup-card">
+        <h2>🎮 Setup Lobby</h2>
+        <input type="text" id="username" placeholder="Tu Nickname" />
+        <hr style="border-color: #334155; margin: 15px 0" />
+
+        <button class="btn-primary" onclick="handleAction('create')">Crear y Unirme</button>
+
+        <p style="text-align: center; font-size: 0.8rem; color: #94a3b8">— O UNIRTE A UNA —</p>
+
+        <input type="text" id="room-code" placeholder="Código de Sala" />
+        <button class="btn-secondary" onclick="handleAction('join')">Unirme con Código</button>
+      </div>
+
+      <div class="card" id="lobby-card" style="display: none">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <h2 id="display-room-code">SALA: ---</h2>
+          <span class="status-tag">En Línea</span>
+        </div>
+        <h3>Jugadores (<span id="count">0</span>)</h3>
+        <div id="player-list"></div>
+        <button class="btn-secondary" style="margin-top: 20px" onclick="location.reload()">
+          Salir de la sala
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const socket = io("https://playu.orchfr.duckdns.org");
+      let myUsername = "";
+
+      async function handleAction(type) {
+        const usernameInput = document.getElementById("username");
+        const codeInput = document.getElementById("room-code");
+
+        myUsername = usernameInput.value.trim();
+        if (!myUsername) return alert("Escribe un nombre primero");
+
+        if (type === "create") {
+          try {
+            const res = await fetch("https://playu.orchfr.duckdns.org/api/v1/room", {
+              method: "POST",
+            });
+            const data = await res.json();
+            joinSocketRoom(data.code);
+          } catch (e) {
+            alert("Error creando sala en el servidor");
+          }
+        } else {
+          const code = codeInput.value.trim().toUpperCase();
+          if (!code) return alert("Escribe el código de la sala");
+          joinSocketRoom(code);
+        }
+      }
+
+      function joinSocketRoom(code) {
+        socket.emit("room:join", { code, username: myUsername });
+      }
+
+      socket.on("room:update", (data) => {
+        document.getElementById("setup-card").style.display = "none";
+        document.getElementById("lobby-card").style.display = "block";
+
+        const codeDisplay = document.getElementById("display-room-code");
+        codeDisplay.innerText = `SALA: ${data.code}`;
+
+        const countDisplay = document.getElementById("count");
+        const listDisplay = document.getElementById("player-list");
+
+        countDisplay.innerText = data.players.length;
+        listDisplay.innerHTML = "";
+
+        data.players.forEach((player) => {
+          const div = document.createElement("div");
+          div.className = "player-item";
+          const isMe = player.id === socket.id;
+
+          div.innerHTML = `
+                <span class="${isMe ? "me" : ""}">
+                    ${player.username} ${isMe ? "(Tú)" : ""}
+                </span>
+                <span style="color: #64748b; font-size: 0.7rem;">
+                    ID: ${player.id.substring(0, 5)}
+                </span>
+            `;
+          listDisplay.appendChild(div);
+        });
+      });
+
+      socket.on("error", (msg) => alert(msg));
+    </script>
+  </body>
+</html>
