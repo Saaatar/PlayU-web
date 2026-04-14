@@ -16,5 +16,5 @@ registerMemocatGame(k);
 registerTuttiFruttiMix(k);
 
 //must be go to menu scene by default
-k.go("catch-face");
+k.go("start-tutifruti");
 export default k;

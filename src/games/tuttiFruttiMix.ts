@@ -1,29 +1,18 @@
 import type { KAPLAYCtx } from "kaplay";
 
 export function registerTuttiFruttiMix(k: KAPLAYCtx) {
-  /*
-    const k = kaplay({
-    canvas: canvasElement,
-    width: 800,
-    height: 600,
-    letterbox: true,
-    background: [15, 23, 42],
-    global: false,
-    });
-*/
-
-  k.loadSprite("apple_red", "/sprites/Apple_Red.png");
-  k.loadSprite("banana", "/sprites/Banana.png");
-  k.loadSprite("cherry", "/sprites/Cherry.png");
-  k.loadSprite("lemon", "/sprites/Lemon.png");
-  k.loadSprite("orange", "/sprites/Orange.png");
-  k.loadSprite("pear", "/sprites/Pear.png");
-  k.loadSprite("plum", "/sprites/Plum.png");
-  k.loadSprite("watermelon", "/sprites/Watermelon.png");
-  k.loadSprite("berry", "/sprites/Berry.png");
-  k.loadSprite("apple_green", "/sprites/Apple_Green.png");
-  k.loadSprite("apple_yellow", "/sprites/Apple_Yellow.png");
-  k.loadSprite("lime", "/sprites/Lime.png");
+  k.loadSprite("apple_red", "/sprites/tutifruti/Apple_Red.png");
+  k.loadSprite("banana", "/sprites/tutifruti/Banana.png");
+  k.loadSprite("cherry", "/sprites/tutifruti/Cherry.png");
+  k.loadSprite("lemon", "/sprites/tutifruti/Lemon.png");
+  k.loadSprite("orange", "/sprites/tutifruti/Orange.png");
+  k.loadSprite("pear", "/sprites/tutifruti/Pear.png");
+  k.loadSprite("plum", "/sprites/tutifruti/Plum.png");
+  k.loadSprite("watermelon", "/sprites/tutifruti/Watermelon.png");
+  k.loadSprite("berry", "/sprites/tutifruti/Berry.png");
+  k.loadSprite("apple_green", "/sprites/tutifruti/Apple_Green.png");
+  k.loadSprite("apple_yellow", "/sprites/tutifruti/Apple_Yellow.png");
+  k.loadSprite("lime", "/sprites/tutifruti/Lime.png");
 
   const fruitsName = [
     "apple_red",
@@ -36,7 +25,7 @@ export function registerTuttiFruttiMix(k: KAPLAYCtx) {
     "orange",
   ];
 
-  k.scene("main", () => {
+  k.scene("start-tutifruti", () => {
     const posicionesSlots = [
       k.vec2(200, 300),
       k.vec2(330, 300),
@@ -139,9 +128,4 @@ export function registerTuttiFruttiMix(k: KAPLAYCtx) {
       });
     });
   });
-
-  /*
-  k.go("main");
-
-  return k;*/
 }
