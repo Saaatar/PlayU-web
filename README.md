@@ -1,51 +1,56 @@
-# PlayU: Distributed Real-Time Minigame Platform
+# PlayU: Distributed Web Game Client
 
 > "Playing with friends should be as easy as sending a link, but as robust as a console." — Benito "la pistola" Garcia
 
-**PlayU** is a platform designed to eliminate gaming frictionForget 100GB downloads; our proposal focuses on instant access via the browser for frantic, simultaneous competition between 2 to 4 players.
+**PlayU** Frontend is the client-side application of our distributed minigame platform. Forget 100GB downloads; this lightweight web client focuses on instant access via the mobile browser, delivering frantic, simultaneous competition for 2 to 4 players by rendering real-time data received from our authoritative server.
 
 ## 🛠️ Tech Stack
 
-* **Runtime:** Node.js 24 (LTS)
-* **Language:** TypeScript / JavaScript (Fullstack)
-* **Game Engine:** KAPLAY.js
-* **Real-Time Communication:** Socket.io (WebSockets)
-* **Frameworks:** React and Express
+- **Runtime:** Node.js 24 (LTS)
+- **Language:** TypeScript
+- **Game Engine:** KAPLAY.js
+- **Real-Time Communication:** Socket.io (WebSockets)
 
 ## 🏗️ System Architecture
 
-We implement an **Authoritative Server** model to act as the Single Source of Truth for every match.
+We implement a **Thin Client (Dumb Client)** pattern. The frontend does not make critical game decisions or validate rules; it acts strictly as a high-performance visualizer and input capturer.
 
-### Hybrid Communication
-* **REST API:** Manages persistence, user metadata, and gaming rooms.
-* **WebSockets:** Handles high-frequency real-time game state data.
+### Communication Flow
 
-### Why is this a Distributed System? 
-* **Autonomous Nodes:** Each player acts as a separate node running its own environment.
-* **Message Passing:** Nodes communicate exclusively over the network without sharing memory.
-* **Concurrency & Arbitration:** The server must order and validate simultaneous events from multiple locations.
-* **Partial Fault Tolerance:** If one node disconnects, the rest of the system remains operational.
-* **Clock Synchronization:** Logic implemented to handle the lack of a global clock across nodes.
+- **REST API Consumption:** Fetches user metadata, handles initial matchmaking UI, and queries the Global Ranking.
+
+- **WebSocket Streaming:** Continuously streams player inputs (touches/virtual joysticks) to the backend and listens for high-frequency game state updates to render on the screen.
+
+### Why is the Client part of a Distributed System?
+
+- **Independent Node:** Each mobile browser acts as an autonomous node processing its own rendering loop and UI state.
+
+- **State Interpolation:** The client must smoothly interpret and render discrete state snapshots sent by the server to create the illusion of continuous, fluid movement.
+
+- **Network Resilience:** Responsible for handling micro-disconnections, displaying network latency metrics (ping), and executing graceful reconnections without freezing the UI.
+
+- **Input Broadcasting:** Efficiently packaging and transmitting local user actions without overwhelming the network constraints of mobile devices.
 
 ## 🎮 Game Dynamics
 
-1. **Connection:** Private rooms created via invitation codes or public matchmaking.
-2. **Distributed Democracy:** A voting phase where players choose the sequence and number ($N$) of minigames.
-3. **Real-Time Competition:** Frantic action with server-side validation for hits, collisions, and timing.
-4. **The Grand Finale:** Once $N$ rounds are finished, points are consolidated via the REST API to crown a winner in the Global Ranking.
+1. **Seamless Connection:** A mobile-first interface designed to enter or share private room invitation codes with zero friction.
+2. **Distributed Democracy:** An interactive voting lobby where players select the sequence and number ($N$) of minigames.
+3. **Responsive Rendering:** Drawing the frantic action at 60 FPS over the Canvas API based strictly on the server's truth, providing immediate visual and audio feedback.
+4. **The Grand Finale:** Dynamic scoreboards and victory screens displayed after the final server consolidation.
 
 ## ⚡ Technical Challenges
 
-* **Consistency:** Using *State Snapshots* to prevent desync between players.
-* **Latency Management:** Server-side validation strategies to ensure fair play despite network lag.
-* **Zombie States:** Robust management of disconnections and clearing orphaned session data.
+- **Consistency:** Using _State Snapshots_ to prevent desync between players.
+- **Latency Management:** Server-side validation strategies to ensure fair play despite network lag.
+- **Zombie States:** Robust management of disconnections and clearing orphaned session data.
 
 ## 👥 Development Team
 
-* **Carlos Coronado Silva** 
-* **Jazmin Dzib Ake** 
-* **Jhonatan Solis Mezeta**
-* **Elias Rodriguez Gallegos** 
+- **Carlos Coronado Silva**
+- **Jazmin Dzib Ake**
+- **Jhonatan Solis Mezeta**
+- **Elias Rodriguez Gallegos**
 
 ---
-*This project was developed for the Distributed Systems course at UADY.*
+
+_This project was developed for the Distributed Systems course at UADY._
