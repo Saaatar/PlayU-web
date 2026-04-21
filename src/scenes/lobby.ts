@@ -3,6 +3,7 @@ import { createButton } from "../components/buttonGame";
 import { createCard } from "../components/card";
 import { createInput } from "../components/input";
 import { room } from "./room";
+import { createRoomService } from "../services/axios";
 
 export function lobby(k: KAPLAYCtx) {
   k.scene("create-lobby", () => {
@@ -43,9 +44,27 @@ export function lobby(k: KAPLAYCtx) {
       parent: createCardd,
       text: "Crear",
       position: k.vec2(0, altoTarjetaIzquierda * 0.3),
-      onClick: () => {
-        console.log("Creando sala:", createRoomInput.getText());
-        k.go("create-room");
+      onClick: async () => {
+        const username = createRoomInput.getText().trim();
+
+        if (username === "") {
+          console.log("El nombre no puede estar vacío");
+          k.shake(2);
+          return;
+        }
+
+        try {
+          const newRoom = await createRoomService();
+          console.log("Room creado:", newRoom.code);
+
+          k.go("create-room", {
+            roomCode: newRoom.code,
+            username: username,
+          });
+        } catch (error) {
+          console.log("Error al crear la sala", error);
+          k.shake(3);
+        }
       },
       width: 150,
       height: 40,
@@ -73,8 +92,19 @@ export function lobby(k: KAPLAYCtx) {
       text: "Unir",
       position: k.vec2(0, altoTarjetaDerecha * 0.35),
       onClick: () => {
-        console.log("Ingresando sala:", joinNameInput.getText());
-        console.log("Ingresando sala:", joinCodeInput.getText());
+        const code = joinCodeInput.getText().trim().toUpperCase();
+        const username = joinNameInput.getText().trim() || "Invitado";
+
+        if (code === "") {
+          console.log("Ingresa un codigo valido");
+          k.shake(2);
+          return;
+        }
+
+        k.go("create-room", {
+          roomCode: code,
+          username: username,
+        });
       },
       width: 150,
       height: 40,
