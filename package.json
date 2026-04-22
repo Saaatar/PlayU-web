@@ -11,7 +11,9 @@
     "format:check": "prettier --check \"src/**/*.{ts,js}\" \"*.json\" \".github/**/*.yml\""
   },
   "dependencies": {
-    "kaplay": "^3001.0.19"
+    "axios": "^1.15.0",
+    "kaplay": "^3001.0.19",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

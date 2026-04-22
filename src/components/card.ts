@@ -6,12 +6,20 @@ interface CardProps {
   title: string;
   description: string;
   position: Vec2;
+  width?: number;
+  height?: number;
 }
 
-export function createCard({ k, title, description, position }: CardProps) {
-  const cardWidth = k.width() * 0.35;
-  const cardHeight = k.height() * 0.65;
-
+export function createCard({
+  k,
+  title,
+  description,
+  position,
+  width = k.width() * 0.35,
+  height = k.height() * 0.65,
+}: CardProps) {
+  const cardWidth = width;
+  const cardHeight = height;
   const card = k.add([
     k.rect(cardWidth, cardHeight, { radius: 12 }),
     k.pos(position),
@@ -30,7 +38,7 @@ export function createCard({ k, title, description, position }: CardProps) {
   ]);
 
   card.add([
-    k.text(description, { size: 15, font: "san-serif" }),
+    k.text(description, { size: 20, font: "Jersey" }),
     k.pos(0, -cardHeight * 0.15),
     k.anchor("center"),
     k.color(130, 134, 145),
