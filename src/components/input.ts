@@ -35,7 +35,7 @@ export function createInput({
     k.anchor("center"),
     k.color(148, 163, 184),
   ]);
-
+  //configuracion de teclado para mobile
   const htmlInput = document.createElement("input");
   htmlInput.type = "text";
 
