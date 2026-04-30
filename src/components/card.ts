@@ -1,5 +1,4 @@
 import type { KAPLAYCtx, Vec2 } from "kaplay";
-import { createButton } from "./buttonGame";
 
 interface CardProps {
   k: KAPLAYCtx;

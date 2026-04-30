@@ -1,4 +1,4 @@
-import type { KAPLAYCtx, Vec2 } from "kaplay";
+import type { KAPLAYCtx } from "kaplay";
 import { createCard } from "../components/card";
 import { Player } from "../types/Player";
 import { socket } from "../services/sockets";
