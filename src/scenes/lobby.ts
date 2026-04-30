@@ -1,4 +1,4 @@
-import type { KAPLAYCtx, Vec2 } from "kaplay";
+import type { KAPLAYCtx } from "kaplay";
 import { createButton } from "../components/buttonGame";
 import { createCard } from "../components/card";
 import { createInput } from "../components/input";

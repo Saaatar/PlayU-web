@@ -1,4 +1,4 @@
-import type { KAPLAYCtx, Vec2 } from "kaplay";
+import type { KAPLAYCtx } from "kaplay";
 import { createButton } from "../components/buttonGame";
 import { lobby } from "./lobby";
 export function mainPage(k: KAPLAYCtx) {
