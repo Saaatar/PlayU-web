@@ -14,7 +14,7 @@ k.loadRoot("./");
 
 //games
 registerCatchFaceGame(k);
-registerMemocatGame(k);
+registerMemocatGame(k, 4);
 registerTuttiFruttiMix(k);
 registerTicTacToe(k);
 mainPage(k);
