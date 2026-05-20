@@ -35,16 +35,17 @@ export function createInput({
     k.color(148, 163, 184),
   ]);
 
-  // Configuración de teclado unificada (Mobile y PC)
   const htmlInput = document.createElement("input");
   htmlInput.type = "text";
   htmlInput.maxLength = maxLength;
 
+  // CONFIGURACIÓN CLAVE PARA MÓVILES
+  // El input debe tener un tamaño real para que el teclado no pierda el cursor
   htmlInput.style.position = "absolute";
-  htmlInput.style.top = "0px";
-  htmlInput.style.left = "0px";
-  htmlInput.style.width = "0px";
-  htmlInput.style.height = "0px";
+  htmlInput.style.top = "-9999px"; // Lo enviamos muy lejos de la pantalla visible
+  htmlInput.style.left = "-9999px";
+  htmlInput.style.width = "10px"; // Tamaño mayor a 0
+  htmlInput.style.height = "10px"; // Tamaño mayor a 0
   htmlInput.style.padding = "0px";
   htmlInput.style.border = "none";
   htmlInput.style.outline = "none";
@@ -54,15 +55,19 @@ export function createInput({
   htmlInput.style.pointerEvents = "none";
   htmlInput.style.zIndex = "-1";
 
+  // Desactivamos todo el texto predictivo y autocorrección que rompen el cursor
+  htmlInput.setAttribute("autocomplete", "off");
+  htmlInput.setAttribute("autocorrect", "off");
+  htmlInput.setAttribute("autocapitalize", "off");
+  htmlInput.setAttribute("spellcheck", "false");
+
   document.body.appendChild(htmlInput);
 
-  // Al hacer clic en el input de Kaplay, enfocamos el HTML
   input.onClick(() => {
     htmlInput.focus();
     input.use(k.outline(2, k.rgb(99, 102, 241)));
   });
 
-  // Toda la escritura y borrado la maneja el navegador nativamente aquí:
   htmlInput.addEventListener("input", (e) => {
     textContent = (e.target as HTMLInputElement).value;
 
@@ -75,13 +80,12 @@ export function createInput({
     }
   });
 
-  // Clic en cualquier lado de la pantalla
   k.onClick(() => {
     if (input.isHovering()) {
       input.outline.color = k.rgb(139, 92, 246);
       if (textContent === "") textObj.text = "";
     } else {
-      htmlInput.blur(); // Quitamos el foco nativo
+      htmlInput.blur();
       input.outline.color = k.rgb(71, 85, 105);
       if (textContent === "") {
         textObj.text = placeholder;
@@ -90,12 +94,10 @@ export function createInput({
     }
   });
 
-  // Efecto cuando el input pierde el foco
   htmlInput.addEventListener("blur", () => {
     input.use(k.outline(2, k.rgb(51, 65, 85)));
   });
 
-  // Limpiar el input oculto al salir de la escena
   k.onSceneLeave(() => {
     htmlInput.remove();
   });
