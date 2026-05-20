@@ -35,9 +35,11 @@ export function createInput({
     k.anchor("center"),
     k.color(148, 163, 184),
   ]);
-  //configuracion de teclado para mobile
+
+  // configuracion de teclado para mobile
   const htmlInput = document.createElement("input");
   htmlInput.type = "text";
+  htmlInput.maxLength = maxLength; // <-- NUEVO: Limita los caracteres en el input nativo
 
   htmlInput.style.position = "absolute";
   htmlInput.style.top = "0px";
@@ -59,12 +61,12 @@ export function createInput({
 
   input.onClick(() => {
     htmlInput.focus();
-
     input.use(k.outline(2, k.rgb(99, 102, 241)));
   });
 
   htmlInput.addEventListener("input", (e) => {
     const currentext = (e.target as HTMLInputElement).value;
+    textContent = currentext; // <-- NUEVO: Sincroniza el texto del HTML hacia la variable de Kaplay
 
     if (currentext === "") {
       textObj.text = placeholder;
@@ -97,6 +99,7 @@ export function createInput({
       textContent += ch;
       textObj.text = textContent;
       textObj.color = k.rgb(255, 255, 255);
+      htmlInput.value = textContent; // <-- NUEVO: Sincroniza lo que se escribe en PC hacia el input HTML
     }
   });
 
@@ -106,6 +109,12 @@ export function createInput({
 
     textContent = textContent.slice(0, -1);
     textObj.text = textContent;
+    htmlInput.value = textContent; // <-- NUEVO: Sincroniza lo que se borra hacia el input HTML
+
+    // Evitar que el placeholder parpadee mientra se borra y está seleccionado
+    if (textContent === "") {
+      textObj.text = "";
+    }
   });
 
   htmlInput.addEventListener("blur", () => {
@@ -115,6 +124,7 @@ export function createInput({
   k.onSceneLeave(() => {
     htmlInput.remove();
   });
+
   return {
     getText: () => htmlInput.value,
   };
