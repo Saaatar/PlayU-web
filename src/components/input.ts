@@ -16,7 +16,6 @@ export function createInput({
   parent,
 }: InputProps) {
   const target = parent || k;
-  let isFocused = false;
   let textContent = "";
 
   const input = target.add([
@@ -36,21 +35,19 @@ export function createInput({
     k.color(148, 163, 184),
   ]);
 
-  // configuracion de teclado para mobile
+  // Configuración de teclado unificada (Mobile y PC)
   const htmlInput = document.createElement("input");
   htmlInput.type = "text";
-  htmlInput.maxLength = maxLength; // <-- NUEVO: Limita los caracteres en el input nativo
+  htmlInput.maxLength = maxLength;
 
   htmlInput.style.position = "absolute";
   htmlInput.style.top = "0px";
   htmlInput.style.left = "0px";
-
   htmlInput.style.width = "0px";
   htmlInput.style.height = "0px";
   htmlInput.style.padding = "0px";
   htmlInput.style.border = "none";
   htmlInput.style.outline = "none";
-
   htmlInput.style.opacity = "0";
   htmlInput.style.color = "transparent";
   htmlInput.style.background = "transparent";
@@ -59,31 +56,32 @@ export function createInput({
 
   document.body.appendChild(htmlInput);
 
+  // Al hacer clic en el input de Kaplay, enfocamos el HTML
   input.onClick(() => {
     htmlInput.focus();
     input.use(k.outline(2, k.rgb(99, 102, 241)));
   });
 
+  // Toda la escritura y borrado la maneja el navegador nativamente aquí:
   htmlInput.addEventListener("input", (e) => {
-    const currentext = (e.target as HTMLInputElement).value;
-    textContent = currentext; // <-- NUEVO: Sincroniza el texto del HTML hacia la variable de Kaplay
+    textContent = (e.target as HTMLInputElement).value;
 
-    if (currentext === "") {
+    if (textContent === "") {
       textObj.text = placeholder;
       textObj.color = k.rgb(148, 163, 184);
     } else {
-      textObj.text = currentext;
+      textObj.text = textContent;
       textObj.color = k.rgb(255, 255, 255);
     }
   });
 
+  // Clic en cualquier lado de la pantalla
   k.onClick(() => {
     if (input.isHovering()) {
-      isFocused = true;
       input.outline.color = k.rgb(139, 92, 246);
       if (textContent === "") textObj.text = "";
     } else {
-      isFocused = false;
+      htmlInput.blur(); // Quitamos el foco nativo
       input.outline.color = k.rgb(71, 85, 105);
       if (textContent === "") {
         textObj.text = placeholder;
@@ -92,40 +90,17 @@ export function createInput({
     }
   });
 
-  // Escribir texto
-  k.onCharInput((ch) => {
-    if (!isFocused) return;
-    if (textContent.length < maxLength) {
-      textContent += ch;
-      textObj.text = textContent;
-      textObj.color = k.rgb(255, 255, 255);
-      htmlInput.value = textContent; // <-- NUEVO: Sincroniza lo que se escribe en PC hacia el input HTML
-    }
-  });
-
-  // Borrar texto
-  k.onKeyPressRepeat("backspace", () => {
-    if (!isFocused || textContent.length === 0) return;
-
-    textContent = textContent.slice(0, -1);
-    textObj.text = textContent;
-    htmlInput.value = textContent; // <-- NUEVO: Sincroniza lo que se borra hacia el input HTML
-
-    // Evitar que el placeholder parpadee mientra se borra y está seleccionado
-    if (textContent === "") {
-      textObj.text = "";
-    }
-  });
-
+  // Efecto cuando el input pierde el foco
   htmlInput.addEventListener("blur", () => {
     input.use(k.outline(2, k.rgb(51, 65, 85)));
   });
 
+  // Limpiar el input oculto al salir de la escena
   k.onSceneLeave(() => {
     htmlInput.remove();
   });
 
   return {
-    getText: () => htmlInput.value,
+    getText: () => textContent,
   };
 }
