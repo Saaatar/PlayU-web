@@ -12,12 +12,14 @@ const k = kaplay({
 
 k.loadRoot("./");
 
+export const gameCatalog: string[] = ["memorama", "start-tutifruti", "Tic-tac-toe"];
 //games
 registerCatchFaceGame(k);
 registerMemocatGame(k);
 registerTuttiFruttiMix(k);
 registerTicTacToe(k);
 mainPage(k);
+
 //must be go to menu scene by default
 k.go("menu");
 export default k;

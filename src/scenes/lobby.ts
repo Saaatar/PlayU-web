@@ -3,7 +3,7 @@ import { createButton } from "../components/buttonGame";
 import { createCard } from "../components/card";
 import { createInput } from "../components/input";
 import { room } from "./room";
-import { createRoomService } from "../services/axios";
+import { createRoomService, sendCatalogToBackend } from "../services/axios";
 
 export function lobby(k: KAPLAYCtx) {
   k.scene("create-lobby", () => {
@@ -55,6 +55,7 @@ export function lobby(k: KAPLAYCtx) {
 
         try {
           const newRoom = await createRoomService();
+          await sendCatalogToBackend();
           console.log("Room creado:", newRoom.code);
 
           k.go("create-room", {
