@@ -37,7 +37,13 @@ export function mainPage(k: KAPLAYCtx) {
       text: "Memocat",
       position: k.vec2(k.width() * 0.8, k.height() * 0.4),
       onClick: () => {
-        k.go("memorama");
+        // Le pasamos jugadores falsos para poder probarlo localmente
+        k.go("memorama", {
+          roomPlayers: [
+            { id: "local_1", username: "Local 1" },
+            { id: "local_2", username: "Local 2" },
+          ],
+        });
       },
     });
 
