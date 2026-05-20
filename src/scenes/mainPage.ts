@@ -1,11 +1,14 @@
 import type { KAPLAYCtx } from "kaplay";
 import { createButton } from "../components/buttonGame";
 import { lobby } from "./lobby";
+
 export function mainPage(k: KAPLAYCtx) {
   k.loadFont("Jersey", "/fonts/Jersey.ttf");
 
   k.scene("menu", () => {
     k.setBackground(2, 6, 23);
+
+    // Título Principal
     k.add([
       k.text("PLAYU", { size: 100, font: "Jersey" }),
       k.pos(k.width() * 0.5, k.height() * 0.3),
@@ -14,51 +17,34 @@ export function mainPage(k: KAPLAYCtx) {
     ]);
 
     lobby(k);
+
+    // Botón de Crear Sala (Centrado)
     createButton({
       k: k,
       text: "Create Room ",
-      position: k.vec2(k.width() * 0.2, k.height() * 0.6),
+      position: k.vec2(k.width() * 0.5, k.height() * 0.6),
       onClick: () => {
         k.go("create-lobby");
       },
     });
 
-    createButton({
-      k: k,
-      text: "TutiFruti ",
-      position: k.vec2(k.width() * 0.8, k.height() * 0.2),
-      onClick: () => {
-        k.go("start-tutifruti");
-      },
-    });
+    // Créditos - Título
+    k.add([
+      k.text("Desarrollado por:", { size: 24, font: "Jersey" }),
+      k.pos(k.width() * 0.5, k.height() * 0.85),
+      k.color(148, 163, 184),
+      k.anchor("center"),
+    ]);
 
-    createButton({
-      k: k,
-      text: "Memocat",
-      position: k.vec2(k.width() * 0.8, k.height() * 0.4),
-      onClick: () => {
-        k.go("memorama", {
-          roomPlayers: [],
-        });
-      },
-    });
-
-    createButton({
-      k: k,
-      text: "TicTacToe",
-      position: k.vec2(k.width() * 0.8, k.height() * 0.6),
-      onClick: () => {
-        k.go("Tic-tac-toe");
-      },
-    });
-
-    createButton({
-      k: k,
-      text: "Croco",
-      position: k.vec2(k.width() * 0.8, k.height() * 0.8),
-      onClick: () => {
-        k.go("catch-face");
-      },
-    });
+    // Créditos - Nombres
+    k.add([
+      k.text("Carlos Coronado, Elias Rodriguez, Jhonatan Solis, Jazmin Ake", {
+        size: 20,
+        font: "Jersey",
+      }),
+      k.pos(k.width() * 0.5, k.height() * 0.9),
+      k.color(148, 163, 184),
+      k.anchor("center"),
+    ]);
   });
 }
