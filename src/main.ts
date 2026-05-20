@@ -4,6 +4,8 @@ import { registerMemocatGame } from "./games/memocat";
 import { registerTuttiFruttiMix } from "./games/tuttiFruttiMix";
 import { registerTicTacToe } from "./games/tic-tac-toe";
 import { mainPage } from "./scenes/mainPage";
+import { scoreBoard } from "./scenes/scoreBoard";
+import { socket } from "./services/sockets";
 
 const k = kaplay({
   global: false,
@@ -12,14 +14,20 @@ const k = kaplay({
 
 k.loadRoot("./");
 
-export const gameCatalog: string[] = ["memorama", "start-tutifruti", "Tic-tac-toe"];
 //games
 registerCatchFaceGame(k);
 registerMemocatGame(k);
 registerTuttiFruttiMix(k);
 registerTicTacToe(k);
 mainPage(k);
+scoreBoard(k);
 
-//must be go to menu scene by default
+socket.on("state:change", (data: { scene: string; params: any }) => {
+  console.log("El backend ordena ir a:", data.scene, "con params:", data.params);
+  k.go(data.scene, data.params);
+});
+
 k.go("menu");
 export default k;
+
+export const gameCatalog: string[] = ["memorama"];

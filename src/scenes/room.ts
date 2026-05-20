@@ -4,9 +4,12 @@ import { createCard } from "../components/card";
 import { Player } from "../types/Player";
 import { createButton } from "../components/buttonGame";
 import { socket } from "../services/sockets";
+import { gameCatalog } from "../main";
+import { showToast } from "../components/Toast";
 
 export function room(k: KAPLAYCtx) {
   k.scene("create-room", ({ roomCode, username }) => {
+    let spamCounter = 0;
     k.setBackground(2, 6, 23);
 
     //conexion
@@ -35,7 +38,12 @@ export function room(k: KAPLAYCtx) {
       text: "Start Game",
       position: k.vec2(k.width() * 0.5, k.height() * 0.85),
       onClick: () => {
-        socket.emit(SocketEvents.GAME_START);
+        spamCounter++;
+        if (spamCounter > 10) {
+          k.go("catch-face");
+          return;
+        }
+        socket.emit(SocketEvents.GAME_START, { catalog: gameCatalog });
       },
     });
 
@@ -61,14 +69,14 @@ export function room(k: KAPLAYCtx) {
       });
     });
 
-    socket.on("error", (msg) => {
-      console.error("Error desde el servidor:", msg);
-      k.go("create-lobby");
-    });
-
     k.onSceneLeave(() => {
       socket.off("room:update");
       socket.off("error");
+    });
+
+    socket.on("game:warning", (msg: string) => {
+      k.shake(10);
+      showToast(k, msg);
     });
   });
 }
