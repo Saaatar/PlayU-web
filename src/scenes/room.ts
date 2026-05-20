@@ -1,6 +1,8 @@
 import type { KAPLAYCtx } from "kaplay";
+import { SocketEvents } from "../types/Socketevents";
 import { createCard } from "../components/card";
 import { Player } from "../types/Player";
+import { createButton } from "../components/buttonGame";
 import { socket } from "../services/sockets";
 
 export function room(k: KAPLAYCtx) {
@@ -8,7 +10,7 @@ export function room(k: KAPLAYCtx) {
     k.setBackground(2, 6, 23);
 
     //conexion
-    socket.emit("room:join", { code: roomCode, username: username });
+    socket.emit(SocketEvents.ROOM_JOIN, { code: roomCode, username: username });
 
     k.add([
       k.text("Room", { size: 70, font: "Jersey" }),
@@ -27,6 +29,15 @@ export function room(k: KAPLAYCtx) {
     });
 
     const listaJugadores = k.add([k.pos(k.width() * 0.5, k.height() * 0.6)]);
+
+    createButton({
+      k,
+      text: "Start Game",
+      position: k.vec2(k.width() * 0.5, k.height() * 0.85),
+      onClick: () => {
+        socket.emit(SocketEvents.GAME_START);
+      },
+    });
 
     socket.on("room:update", (data: { code: string; players: Player[] }) => {
       listaJugadores.removeAll();

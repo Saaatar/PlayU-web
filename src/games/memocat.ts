@@ -1,10 +1,10 @@
 import type { KAPLAYCtx } from "kaplay";
+import { Player } from "../types/Player";
 
 const ANIMALS = ["cat-1", "cat-2", "cat-3", "cat-4", "cat-5", "cat-6", "cat-7", "cat-8"];
 const COLS = 4;
-const ROWS = 4; // 8 animales x 2 = 16 cartas, que equivalen a 4 filas
-const MAX_PLAYERS = 4;
-const FLIP_TIMEOUT = 15; // 15 segundos
+const ROWS = 4;
+const FLIP_TIMEOUT = 15;
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -15,25 +15,20 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export function registerMemocatGame(k: KAPLAYCtx, numPlayers: number = 1) {
-  const players = Array.from({ length: Math.min(numPlayers, MAX_PLAYERS) }, (_, i) => ({
-    id: i,
-    name: `Jugador ${i + 1}`,
-    score: 0,
-  }));
+export function registerMemocatGame(k: KAPLAYCtx) {
+  // CORRECCIÓN 3: Mover la carga de sprites FUERA de la escena para que solo ocurra una vez
+  ANIMALS.forEach((animal) => {
+    k.loadSprite(animal, `/sprites/gatos/${animal}.webp`);
+  });
 
-  k.scene("memorama", () => {
-    // Cargar sprites
-    ANIMALS.forEach((animal) => {
-      k.loadSprite(animal, `/sprites/gatos/${animal}.webp`);
-    });
-    // 1. CÁLCULOS DINÁMICOS DE TAMAÑO
-    const GAP = k.width() * 0.02;
+  k.scene("memorama", ({ roomPlayers }: { roomPlayers: Player[] }) => {
+    const players = roomPlayers.map((p) => ({ id: p.id, name: p.username, score: 0 }));
+
+    const GAP = k.width() * 0.015;
     const maxCardW = (k.width() * 0.85 - GAP * (COLS - 1)) / COLS;
     const maxCardH = (k.height() * 0.7 - GAP * (ROWS - 1)) / ROWS;
     const CARD_SIZE = Math.min(maxCardW, maxCardH);
 
-    // 2. CÁLCULO PARA CENTRAR LA CUADRÍCULA
     const gridW = COLS * CARD_SIZE + (COLS - 1) * GAP;
     const gridH = ROWS * CARD_SIZE + (ROWS - 1) * GAP;
     const OFFSET_X = (k.width() - gridW) / 2;
@@ -45,37 +40,48 @@ export function registerMemocatGame(k: KAPLAYCtx, numPlayers: number = 1) {
     let matched = 0;
     let currentPlayer = 0;
     let locked = false;
-    let timeoutHandle: any = null;
     let elapsedTime = 0;
 
-    // Mostrar info de jugadores en la parte superior
     const playerInfoUI = k.add([k.pos(20, 10), "ui"]);
+
     const updatePlayerInfo = () => {
       playerInfoUI.children.forEach((c) => c.destroy());
       let xPos = 20;
+
       players.forEach((p, i) => {
         const isActive = i === currentPlayer ? "→ " : "  ";
-        const text = k.add([
+
+        const text = k.make([
           k.text(`${isActive}${p.name}: ${p.score}`, { size: 14 }),
           k.pos(xPos, 10),
           k.color(i === currentPlayer ? 255 : 200, 200, 200),
         ]);
-        playerInfoUI.add(text);
+
+        playerInfoUI.add(text); // Ahora esto funcionará perfecto
         xPos += 150;
       });
     };
     updatePlayerInfo();
-
-    // Timer display
-    let timerDisplay = k.add([
+    const timerDisplay = k.add([
       k.text(`Tiempo: ${FLIP_TIMEOUT}s`, { size: 16 }),
       k.pos(k.width() - 150, 10),
       k.color(100, 200, 255),
     ]);
 
     const updateTimer = () => {
-      timerDisplay.text = `Tiempo: ${Math.ceil(FLIP_TIMEOUT - elapsedTime)}s`;
+      const timeLeft = Math.max(0, FLIP_TIMEOUT - elapsedTime);
+      timerDisplay.text = `Tiempo: ${Math.ceil(timeLeft)}s`;
     };
+
+    function passTurn() {
+      flipped.forEach((card) => flip(card, false));
+      flipped = [];
+      locked = false;
+      elapsedTime = 0; // Reiniciamos el reloj
+      currentPlayer = (currentPlayer + 1) % players.length; // Pasamos al siguiente
+      updatePlayerInfo();
+      updateTimer();
+    }
 
     deck.forEach((animal, i) => {
       const col = i % COLS;
@@ -97,10 +103,13 @@ export function registerMemocatGame(k: KAPLAYCtx, numPlayers: number = 1) {
       ]);
 
       card.sprite = k.add([
-        k.sprite(animal),
+        k.sprite(animal, {
+          width: CARD_SIZE * 0.9,
+          height: CARD_SIZE * 0.9,
+        }),
         k.pos(x, y),
         k.anchor("center"),
-        k.scale(CARD_SIZE * 0.0015),
+
         { opacity: 0 },
       ]);
 
@@ -119,22 +128,6 @@ export function registerMemocatGame(k: KAPLAYCtx, numPlayers: number = 1) {
       card.question.opacity = show ? 0 : 1;
     }
 
-    function resetTimeout() {
-      if (timeoutHandle) k.cancel(timeoutHandle);
-      elapsedTime = 0;
-      updateTimer();
-      timeoutHandle = k.wait(FLIP_TIMEOUT, () => {
-        if (flipped.length === 2) {
-          flip(flipped[0], false);
-          flip(flipped[1], false);
-          flipped = [];
-          locked = false;
-          currentPlayer = (currentPlayer + 1) % players.length;
-          updatePlayerInfo();
-        }
-      });
-    }
-
     function checkMatch() {
       const [a, b] = flipped;
       if (a.animal === b.animal) {
@@ -143,23 +136,19 @@ export function registerMemocatGame(k: KAPLAYCtx, numPlayers: number = 1) {
         b.bg.color = k.rgb(60, 180, 100);
         players[currentPlayer].score++;
         matched++;
+
         flipped = [];
         locked = false;
-        if (timeoutHandle) k.cancel(timeoutHandle);
+        elapsedTime = 0; // Reinicia el tiempo porque acertó y conserva el turno
         updatePlayerInfo();
 
         if (matched === ANIMALS.length) {
-          k.wait(0.5, () => k.go("memorama-win", { players }));
+          k.wait(0.5, () => k.go("memorama-win", { players, roomPlayers }));
         }
       } else {
         k.wait(0.5, () => {
-          flip(a, false);
-          flip(b, false);
-          flipped = [];
-          currentPlayer = (currentPlayer + 1) % players.length;
-          updatePlayerInfo();
-          locked = false;
-          if (timeoutHandle) k.cancel(timeoutHandle);
+          // Falló, pasamos el turno
+          passTurn();
         });
       }
     }
@@ -168,28 +157,31 @@ export function registerMemocatGame(k: KAPLAYCtx, numPlayers: number = 1) {
       if (locked) return;
       const card = obj.cardRef;
       if (card.revealed || card.matched || flipped.length >= 2) return;
+
       flip(card, true);
       flipped.push(card);
-      if (flipped.length === 1) {
-        resetTimeout();
-      }
+
       if (flipped.length === 2) {
         locked = true;
         k.wait(0.8, checkMatch);
       }
     });
 
-    // Update timer every frame
+    // CORRECCIÓN 1: El temporizador cuenta siempre, a menos que se esté evaluando un match
     k.onUpdate(() => {
-      if (flipped.length > 0 && !locked) {
+      if (!locked) {
         elapsedTime += k.dt();
         updateTimer();
+
+        // Si pasan los 15 segundos, cambiamos de turno automáticamente
+        if (elapsedTime >= FLIP_TIMEOUT) {
+          passTurn();
+        }
       }
     });
   });
 
-  // 3. PANTALLA DE VICTORIA DINÁMICA
-  k.scene("memorama-win", ({ players }: { players: any[] }) => {
+  k.scene("memorama-win", ({ players, roomPlayers }: { players: any[]; roomPlayers: Player[] }) => {
     k.add([
       k.text("¡Juego Terminado! 🎉", { size: Math.min(k.width() * 0.1, 48) }),
       k.pos(k.center().x, k.height() * 0.2),
@@ -220,6 +212,8 @@ export function registerMemocatGame(k: KAPLAYCtx, numPlayers: number = 1) {
       "btnRetry",
     ]);
 
-    k.onClick("btnRetry", () => k.go("memorama"));
+    k.onClick("btnRetry", () => {
+      k.go("memorama", { roomPlayers });
+    });
   });
 }
