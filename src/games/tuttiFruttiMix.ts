@@ -1,4 +1,20 @@
 import type { KAPLAYCtx } from "kaplay";
+import { mulberry32 } from "../utils/mulberry32";
+import { Player } from "../types/Player";
+import { socket } from "../services/sockets";
+import { createTurnBanner } from "../components/turnBanner";
+import { createTimerDisplay } from "../components/timerDisplay";
+import { SocketEvents } from "../types/Socketevents";
+
+// Función de barajado determinista
+function shuffle<T>(arr: T[], randomFunc: () => number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(randomFunc() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 export function registerTuttiFruttiMix(k: KAPLAYCtx) {
   k.loadSprite("apple_red", "/sprites/tutifruti/Apple_Red.png");
@@ -25,150 +41,258 @@ export function registerTuttiFruttiMix(k: KAPLAYCtx) {
     "orange",
   ];
 
-  k.scene("start-tutifruti", () => {
-    /*const posicionesSlots = [
-      k.vec2(200, 300),
-      k.vec2(330, 300),
-      k.vec2(460, 300),
-      k.vec2(590, 300),
-      k.vec2(200, 430),
-      k.vec2(330, 430),
-      k.vec2(460, 430),
-      k.vec2(590, 430),
-    ];*/
-    const instruccion = k.add([
-      k.text("¡MEMORIZA LAS POSICIONES!", { size: 32, font: "sans-serif" }),
-      k.pos(k.width() * 0.5, k.height() * 0.2),
-      k.anchor("center"),
-      k.color(255, 200, 50),
-    ]);
+  k.scene(
+    "tutti-frutti",
+    ({
+      roomPlayers,
+      seed,
+      firstTurnId,
+    }: {
+      roomPlayers: Player[];
+      seed: number;
+      firstTurnId: string;
+    }) => {
+      // --- ESTADO DEL JUEGO ---
+      const players = roomPlayers.map((p) => ({ id: p.id, username: p.username, score: 0 }));
+      let currentTurnPlayerId = "";
+      let localTimeLeft = 15;
+      let isMyTurn = false;
 
-    //posiciones de tablero
-    const totalSlots = 8;
-    const columnas = 4;
+      let locked = true; // Empieza bloqueado durante los 4s de memorización
+      let matchedPairs = 0;
 
-    // Espaciado del tablero
-    const espaciadoX = k.width() * 0.12;
-    const espaciadoY = k.height() * 0.25;
+      const rng = mulberry32(seed);
+      const frutasAleatorias = shuffle([...fruitsName], rng); // Posiciones del tablero
+      const frutasOpcionesShuffle = shuffle([...fruitsName], rng); // Posiciones de los botones
 
-    // EL SECRETO: El cuadro ahora escala según la pantalla (nunca será más grande que su espacio)
-    const tamanoSlot = espaciadoX * 0.8;
+      // --- COMPONENTES MULTIJUGADOR ---
+      const playerInfoUI = k.add([k.pos(20, 10), "ui"]);
+      const turnBannerComponent = createTurnBanner(k, players, socket.id);
+      const timerComponent = createTimerDisplay(k, localTimeLeft);
 
-    // Movemos el centro del tablero al 65% de la pantalla para dejar libre el lado izquierdo
-    const centroDerecho = k.width() * 0.5;
-    const startX = centroDerecho - (espaciadoX * (columnas - 1)) / 2;
-    const startY = k.height() * 0.35;
+      const updatePlayerInfoUI = () => {
+        playerInfoUI.children.forEach((c) => c.destroy());
+        let xPos = 20;
 
-    const posicionesSlots: any[] = [];
+        players.forEach((p) => {
+          const isActive = p.id === currentTurnPlayerId ? "→ " : "  ";
+          const text = k.make([
+            k.text(`${isActive}${p.username}: ${p.score}`, { size: 14 }),
+            k.pos(xPos, 10),
+            k.color(p.id === currentTurnPlayerId ? 255 : 200, 200, 200),
+          ]);
+          playerInfoUI.add(text);
+          xPos += 150;
+        });
+      };
 
-    for (let i = 0; i < totalSlots; i++) {
-      const col = i % columnas;
-      const fila = Math.floor(i / columnas);
-      const posX = startX + col * espaciadoX;
-      const posY = startY + fila * espaciadoY;
-      posicionesSlots.push(k.vec2(posX, posY));
-    }
-    // Tablero
-    const frutasAleatorias = k.shuffle([...fruitsName]);
+      const applyTurn = (playerId: string, timeout: number) => {
+        currentTurnPlayerId = playerId;
+        localTimeLeft = timeout;
+        isMyTurn = socket.id === currentTurnPlayerId;
 
-    frutasAleatorias.forEach((fruta, index) => {
-      k.add([
-        // Usamos el tamaño dinámico. El radio del borde también escala.
-        k.rect(tamanoSlot, tamanoSlot, { radius: Math.max(4, tamanoSlot * 0.1) }),
-        k.pos(posicionesSlots[index]),
+        turnBannerComponent.update(currentTurnPlayerId);
+        timerComponent.updateTime(localTimeLeft);
+        updatePlayerInfoUI();
+      };
+
+      // Reloj visual local
+      k.onUpdate(() => {
+        if (localTimeLeft > 0 && !locked) {
+          localTimeLeft -= k.dt();
+          timerComponent.updateTime(localTimeLeft);
+        }
+      });
+
+      // --- DIBUJAR TABLERO ---
+      const instruccion = k.add([
+        k.text("¡MEMORIZA LAS POSICIONES!", { size: 32, font: "sans-serif" }),
+        k.pos(k.width() * 0.5, k.height() * 0.2),
         k.anchor("center"),
-        k.color(30, 40, 60),
-        k.outline(3, k.rgb(70, 80, 110)),
-        k.area(),
-        "slot",
-        { frutaCorrecta: fruta },
+        k.color(255, 200, 50),
       ]);
 
-      k.add([
-        k.sprite(fruta),
-        k.pos(posicionesSlots[index]),
-        k.anchor("center"),
-        // Escala la fruta basada en el tamaño del recuadro (asumiendo que tu sprite mide ~100px)
-        k.scale(tamanoSlot / 100),
-        "fruta_memoria",
-      ]);
-    });
+      const totalSlots = 8;
+      const columnas = 4;
+      const espaciadoX = k.width() * 0.12;
+      const espaciadoY = k.height() * 0.25;
+      const tamanoSlot = espaciadoX * 0.8;
+      const centroDerecho = k.width() * 0.5;
+      const startX = centroDerecho - (espaciadoX * (columnas - 1)) / 2;
+      const startY = k.height() * 0.35;
 
-    k.wait(4, () => {
-      instruccion.text = "¡ACOMODA LAS FRUTAS!";
-      instruccion.color = k.rgb(50, 255, 50);
+      const slotEntities: any[] = [];
+      const optionEntities: Record<string, any> = {};
 
-      k.destroyAll("fruta_memoria");
-      const frutasOpciones = k.shuffle([...fruitsName]);
+      frutasAleatorias.forEach((fruta, index) => {
+        const col = index % columnas;
+        const fila = Math.floor(index / columnas);
+        const posX = startX + col * espaciadoX;
+        const posY = startY + fila * espaciadoY;
 
-      const columnasIzquierda = 2;
-      const espacioOpcX = k.width() * 0.1; // Espacio entre las 2 columnas
-      const espacioOpcY = k.height() * 0.15; // Espacio vertical (4 filas)
+        const slot = k.add([
+          k.rect(tamanoSlot, tamanoSlot, { radius: Math.max(4, tamanoSlot * 0.1) }),
+          k.pos(posX, posY),
+          k.anchor("center"),
+          k.color(30, 40, 60),
+          k.outline(3, k.rgb(70, 80, 110)),
+          k.area(),
+          "slot",
+          { frutaCorrecta: fruta, index, ocupado: false },
+        ]);
 
-      // El centro de las opciones estará en el 20% del ancho de la pantalla (Lado Izquierdo)
-      const centroIzquierdo = k.width() * 0.1;
-      const startOpcionesX = centroIzquierdo - (espacioOpcX * (columnasIzquierda - 1)) / 2;
-      const startOpcionesY = startY; // Empiezan a la misma altura que el tablero
-
-      frutasOpciones.forEach((fruta, index) => {
-        const col = index % columnasIzquierda;
-        const fila = Math.floor(index / columnasIzquierda);
-
-        const posX = startOpcionesX + col * espacioOpcX;
-        const posY = startOpcionesY + fila * espacioOpcY;
+        slotEntities.push(slot);
 
         k.add([
           k.sprite(fruta),
-          k.pos(posX, posY), // ERROR CORREGIDO: Ya no usa posicionesSlots[index]
+          k.pos(posX, posY),
           k.anchor("center"),
-          k.scale(tamanoSlot / 100), // Mantiene la misma escala que el tablero
-          k.area(),
-          "fruta_jugable",
-          { nombre: fruta },
+          k.scale(tamanoSlot / 100),
+          "fruta_memoria",
         ]);
       });
 
-      // Lógica de clics
+      // Inicializa el primer turno
+      applyTurn(firstTurnId, 15);
+
+      // --- FASE DE JUEGO (después de 4 segundos) ---
+      k.wait(4, () => {
+        instruccion.text = "¡ACOMODA LAS FRUTAS!";
+        instruccion.color = k.rgb(50, 255, 50);
+        k.destroyAll("fruta_memoria");
+
+        locked = false; // Desbloqueamos interacciones
+
+        const columnasIzquierda = 2;
+        const espacioOpcX = k.width() * 0.1;
+        const espacioOpcY = k.height() * 0.15;
+        const centroIzquierdo = k.width() * 0.1;
+        const startOpcionesX = centroIzquierdo - (espacioOpcX * (columnasIzquierda - 1)) / 2;
+        const startOpcionesY = startY;
+
+        frutasOpcionesShuffle.forEach((fruta, index) => {
+          const col = index % columnasIzquierda;
+          const fila = Math.floor(index / columnasIzquierda);
+          const posX = startOpcionesX + col * espacioOpcX;
+          const posY = startOpcionesY + fila * espacioOpcY;
+
+          const option = k.add([
+            k.sprite(fruta),
+            k.pos(posX, posY),
+            k.anchor("center"),
+            k.scale(tamanoSlot / 100),
+            k.area(),
+            "fruta_jugable",
+            { nombre: fruta },
+          ]);
+
+          optionEntities[fruta] = option;
+        });
+      });
+
+      // --- EVENTOS LOCALES ---
       let selectFruit: any = null;
 
       k.onClick("fruta_jugable", (fruitClick) => {
-        if (selectFruit) selectFruit.scale = k.vec2(0.8);
+        if (!isMyTurn || locked) return; // Solo puedes seleccionar si es tu turno
 
+        if (selectFruit) selectFruit.scale = k.vec2(tamanoSlot / 100);
         selectFruit = fruitClick;
-        selectFruit.scale = k.vec2(1.1);
+        selectFruit.scale = k.vec2((tamanoSlot / 100) * 1.3); // Hace zoom visual a la seleccionada
       });
 
       k.onClick("slot", (slotClick) => {
-        if (!selectFruit) return;
+        if (!isMyTurn || locked || !selectFruit || slotClick.ocupado) return;
 
-        if (slotClick.frutaCorrecta === selectFruit.nombre) {
-          selectFruit.pos = slotClick.pos;
-          selectFruit.scale = k.vec2(0.8);
-          selectFruit.unuse("area");
-          selectFruit = null;
+        // Emitimos la acción al backend en lugar de resolverlo localmente
+        socket.emit("game:action", {
+          action: "PLACE_FRUIT",
+          fruitName: selectFruit.nombre,
+          slotIndex: slotClick.index,
+        });
+      });
 
-          k.add([
-            k.text("BIEN", { size: 40 }),
-            k.pos(slotClick.pos.x + 30, slotClick.pos.y - 30),
-            k.opacity(1),
-            k.lifespan(1, { fade: 0.5 }),
-          ]);
-        } else {
-          // ¡ERROR!
-          k.shake(5);
+      // --- SINCRONIZACIÓN DE SOCKETS ---
+      socket.on("game:turn_sync", (data: { activePlayerId: string; timeoutSeconds: number }) => {
+        applyTurn(data.activePlayerId, data.timeoutSeconds);
+      });
 
-          k.add([
-            k.text("MAL", { size: 60 }),
-            k.pos(slotClick.pos),
-            k.anchor("center"),
-            k.opacity(1),
-            k.lifespan(0.5, { fade: 0.2 }),
-          ]);
+      socket.on("game:action", (data: any) => {
+        if (data.action === "PLACE_FRUIT") {
+          const targetSlot = slotEntities[data.slotIndex];
+          const optionFruit = optionEntities[data.fruitName];
 
-          selectFruit.scale = k.vec2(0.8);
-          selectFruit = null;
+          if (targetSlot.frutaCorrecta === data.fruitName) {
+            // ACIERTO
+            targetSlot.ocupado = true;
+
+            if (optionFruit) {
+              optionFruit.pos = targetSlot.pos;
+              optionFruit.scale = k.vec2(tamanoSlot / 100);
+              optionFruit.unuse("area"); // Deshabilita clics
+            }
+
+            k.add([
+              k.text("BIEN", { size: 40 }),
+              k.pos(targetSlot.pos.x + 30, targetSlot.pos.y - 30),
+              k.opacity(1),
+              k.lifespan(1, { fade: 0.5 }),
+            ]);
+
+            // Suma de puntos
+            const playerIndex = players.findIndex((p) => p.id === data.playerId);
+            if (playerIndex !== -1) {
+              players[playerIndex].score++;
+              updatePlayerInfoUI();
+            }
+
+            matchedPairs++;
+
+            if (selectFruit && selectFruit.nombre === data.fruitName) selectFruit = null;
+
+            // Verificar condición de fin de juego
+            if (matchedPairs === fruitsName.length) {
+              if (isMyTurn) {
+                const finalScores: Record<string, number> = {};
+                players.forEach((p) => {
+                  finalScores[p.id] = p.score;
+                });
+                socket.emit(SocketEvents.GAME_END_MINI, { scores: finalScores });
+              }
+            } else {
+              // Gana el turno (no lo pasa)
+              if (isMyTurn) socket.emit("game:end_turn", { passTurn: false });
+            }
+          } else {
+            // ERROR
+            k.shake(5);
+
+            k.add([
+              k.text("MAL", { size: 60 }),
+              k.pos(targetSlot.pos),
+              k.anchor("center"),
+              k.opacity(1),
+              k.lifespan(0.5, { fade: 0.2 }),
+            ]);
+
+            if (selectFruit) {
+              selectFruit.scale = k.vec2(tamanoSlot / 100);
+              selectFruit = null;
+            }
+
+            // Pierde el turno
+            if (isMyTurn) socket.emit("game:end_turn", { passTurn: true });
+          }
         }
       });
-    });
-  });
+
+      k.onSceneLeave(() => {
+        socket.off("game:turn_sync");
+        socket.off("game:action");
+
+        turnBannerComponent.destroy();
+        timerComponent.destroy();
+      });
+    }
+  );
 }

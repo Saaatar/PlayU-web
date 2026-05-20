@@ -1,256 +1,231 @@
 import type { KAPLAYCtx } from "kaplay";
+import { Player } from "../types/Player";
+import { socket } from "../services/sockets";
+import { createTurnBanner } from "../components/turnBanner";
+import { createTimerDisplay } from "../components/timerDisplay";
+import { SocketEvents } from "../types/Socketevents";
 
 export function registerTicTacToe(k: KAPLAYCtx) {
-  k.scene("Tic-tac-toe", () => {
-    // --- VARIABLES DEL TORNEO ---
-    let scores = [0, 0, 0, 0];
-    let names = ["Jugador 1", "Jugador 2", "Jugador 3", "Jugador 4"];
-    let matchNumber = 1;
-    let idxX = 0; // Índice del jugador que usa las X (Jugador 1)
-    let idxO = 1; // Índice del jugador que usa las O (Jugador 2)
-    let finalists: number[] = []; // Aquí guardaremos a los que pasan a la final
+  k.scene(
+    "tic-tac-toe",
+    ({ roomPlayers, firstTurnId }: { roomPlayers: Player[]; firstTurnId: string }) => {
+      // --- ESTADO DEL JUEGO ---
+      const players = roomPlayers.map((p) => ({ id: p.id, username: p.username, score: 0 }));
+      let currentTurnPlayerId = "";
+      let localTimeLeft = 15;
+      let isMyTurn = false;
+      let locked = false;
 
-    // --- VARIABLES DEL TABLERO ---
-    let board: (string | null)[] = Array(9).fill(null);
-    let currentPlayer: string = "X";
-    let gameActive: boolean = true;
+      const board: (string | null)[] = Array(9).fill(null);
 
-    // Centramos el tablero y lo bajamos un poco para que quepan los textos
-    const tableroX = k.width() * 0.5 - 150;
-    const offset = 180;
-
-    // --- INTERFAZ DE TEXTO (UI) ---
-    const title = k.add([
-      k.text(`RONDA 1: ${names[idxX]} vs ${names[idxO]}`, { size: 36 }),
-      k.pos(k.width() / 2, 40),
-      k.anchor("center"),
-      k.color(255, 200, 50),
-    ]);
-
-    const status = k.add([
-      k.text(`Turno de: ${names[idxX]} (X)`, { size: 28 }),
-      k.pos(k.width() / 2, 100),
-      k.anchor("center"),
-    ]);
-
-    // --- DIBUJO DEL TABLERO ESTÁTICO ---
-    k.add([k.rect(4, 300), k.pos(tableroX + 100, offset), k.color(255, 255, 255), "fondo_tablero"]);
-    k.add([k.rect(4, 300), k.pos(tableroX + 200, offset), k.color(255, 255, 255), "fondo_tablero"]);
-    k.add([k.rect(300, 4), k.pos(tableroX, offset + 100), k.color(255, 255, 255), "fondo_tablero"]);
-    k.add([k.rect(300, 4), k.pos(tableroX, offset + 200), k.color(255, 255, 255), "fondo_tablero"]);
-
-    // --- ACTUALIZAR FICHAS ---
-    function updateVisuals() {
-      k.destroyAll("pieza");
-
-      let nombreTurno = currentPlayer === "X" ? names[idxX] : names[idxO];
-      status.text = `Turno de: ${nombreTurno} (${currentPlayer})`;
-
-      board.forEach((val, i) => {
-        if (val) {
-          const x = (i % 3) * 100 + (tableroX + 50);
-          const y = Math.floor(i / 3) * 100 + (offset + 50);
-
-          k.add([
-            k.text(val, { size: 64 }),
-            k.pos(x, y),
-            k.anchor("center"),
-            k.color(val === "X" ? k.rgb(255, 50, 50) : k.rgb(50, 50, 255)),
-            "pieza",
-          ]);
-        }
-      });
-    }
-
-    // --- VERIFICAR VICTORIA ---
-    function checkWin(): string | null {
-      const winPatterns = [
-        [0, 1, 2],
-        [3, 4, 5],
-        [6, 7, 8],
-        [0, 3, 6],
-        [1, 4, 7],
-        [2, 5, 8],
-        [0, 4, 8],
-        [2, 4, 6],
+      // Símbolos y colores para hasta 4 jugadores
+      const PLAYER_SYMBOLS = ["X", "O", "∆", "◻"];
+      const PLAYER_COLORS = [
+        k.rgb(255, 50, 50), // Rojo
+        k.rgb(50, 150, 255), // Azul
+        k.rgb(50, 255, 50), // Verde
+        k.rgb(255, 255, 50), // Amarillo
       ];
 
-      for (let pattern of winPatterns) {
-        const [a, b, c] = pattern;
-        if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
-      }
-      if (!board.includes(null)) return "Draw"; // Empate
-      return null;
-    }
+      // --- COMPONENTES DE UI ---
+      const playerInfoUI = k.add([k.pos(20, 10), "ui"]);
+      const turnBannerComponent = createTurnBanner(k, players, socket.id);
+      const timerComponent = createTimerDisplay(k, localTimeLeft);
 
-    // --- FIN DE LA PARTIDA ---
-    function showMatchResult(winnerMark: string) {
-      gameActive = false;
-      let matchWinnerIdx = -1;
-      let mensaje = "";
+      const updatePlayerInfoUI = () => {
+        playerInfoUI.children.forEach((c) => c.destroy());
+        let xPos = 20;
 
-      if (winnerMark === "X") {
-        matchWinnerIdx = idxX;
-        scores[idxX] += 5;
-        finalists.push(idxX);
-        mensaje = `¡Ganó ${names[idxX]}! (+5 pts)`;
-      } else if (winnerMark === "O") {
-        matchWinnerIdx = idxO;
-        scores[idxO] += 5;
-        finalists.push(idxO);
-        mensaje = `¡Ganó ${names[idxO]}! (+5 pts)`;
-      } else {
-        // Empate: 1 punto a cada uno
-        scores[idxX] += 1;
-        scores[idxO] += 1;
-        // Si hay empate, pasamos al primer jugador de esa ronda a la final para que no se rompa el torneo
-        finalists.push(idxX);
-        mensaje = "¡Empate! (+1 pto a los dos)";
-      }
+        players.forEach((p, index) => {
+          const isActive = p.id === currentTurnPlayerId ? "→ " : "  ";
+          const symbol = PLAYER_SYMBOLS[index % PLAYER_SYMBOLS.length];
+          const color = PLAYER_COLORS[index % PLAYER_COLORS.length];
 
-      status.text = "Fin de la Ronda";
+          const text = k.make([
+            k.text(`${isActive}${p.username} (${symbol}): ${p.score}`, { size: 14 }),
+            k.pos(xPos, 10),
+            k.color(p.id === currentTurnPlayerId ? color : k.rgb(150, 150, 150)),
+          ]);
+          playerInfoUI.add(text);
+          xPos += 180;
+        });
+      };
 
-      // Cartel de resultados
-      k.add([
-        k.rect(500, 200),
-        k.pos(k.center()),
-        k.anchor("center"),
-        k.color(0, 0, 0),
-        k.outline(4, k.rgb(255, 255, 255)),
-        "cartel",
-      ]);
-      k.add([
-        k.text(mensaje, { size: 32 }),
-        k.pos(k.width() / 2, k.height() / 2 - 30),
-        k.anchor("center"),
-        "cartel",
-      ]);
+      const applyTurn = (playerId: string, timeout: number) => {
+        currentTurnPlayerId = playerId;
+        localTimeLeft = timeout;
+        isMyTurn = socket.id === currentTurnPlayerId;
 
-      // Botón para la siguiente fase
-      const textoBoton = matchNumber === 3 ? "VER PUNTUACIONES" : "SIGUIENTE RONDA";
-      const btn = k.add([
-        k.rect(300, 50, { radius: 8 }),
-        k.pos(k.width() / 2, k.height() / 2 + 50),
-        k.anchor("center"),
-        k.color(50, 200, 50),
-        k.area(),
-        "cartel",
-      ]);
-      k.add([
-        k.text(textoBoton, { size: 20 }),
-        k.pos(k.width() / 2, k.height() / 2 + 50),
-        k.anchor("center"),
-        k.color(0, 0, 0),
-        "cartel",
-      ]);
+        turnBannerComponent.update(currentTurnPlayerId);
+        timerComponent.updateTime(localTimeLeft);
+        updatePlayerInfoUI();
+      };
 
-      btn.onClick(() => {
-        k.destroyAll("cartel");
-        if (matchNumber < 3) {
-          setupNextMatch();
-        } else {
-          showGrandFinale();
+      // Reloj visual local
+      k.onUpdate(() => {
+        if (localTimeLeft > 0 && !locked) {
+          localTimeLeft -= k.dt();
+          timerComponent.updateTime(localTimeLeft);
         }
       });
-    }
 
-    // --- PREPARAR SIGUIENTE RONDA ---
-    function setupNextMatch() {
-      if (matchNumber === 1) {
-        matchNumber = 2;
-        idxX = 2; // Jugador 3
-        idxO = 3; // Jugador 4
-        title.text = `RONDA 2: ${names[idxX]} vs ${names[idxO]}`;
-      } else if (matchNumber === 2) {
-        matchNumber = 3;
-        idxX = finalists[0]; // Ganador R1
-        idxO = finalists[1]; // Ganador R2
-        title.text = `LA GRAN FINAL: ${names[idxX]} vs ${names[idxO]}`;
-        title.color = k.rgb(255, 50, 50); // La final en rojo
-      }
+      // --- DIBUJAR EL TABLERO ---
+      const CELL_SIZE = k.width() * 0.12;
+      const OFFSET_X = k.width() / 2 - CELL_SIZE * 1.5;
+      const OFFSET_Y = k.height() / 2 - CELL_SIZE * 1.5 + 30;
 
-      // Reiniciar variables del tablero
-      board = Array(9).fill(null);
-      currentPlayer = "X";
-      gameActive = true;
-      updateVisuals();
-    }
-
-    // --- PUNTUACIONES FINALES ---
-    function showGrandFinale() {
-      k.destroyAll("pieza");
-      k.destroyAll("fondo_tablero");
-      k.destroyAll("area_clic");
-      title.text = "🏆 PUNTUACIONES FINALES 🏆";
-      status.text = "";
-
-      const panel = k.add([
-        k.rect(500, 350),
-        k.pos(k.center()),
-        k.anchor("center"),
-        k.color(30, 30, 30),
-        k.outline(4, k.rgb(255, 255, 255)),
+      // Líneas de la cuadrícula
+      k.add([
+        k.rect(4, CELL_SIZE * 3),
+        k.pos(OFFSET_X + CELL_SIZE, OFFSET_Y),
+        k.color(255, 255, 255),
+      ]);
+      k.add([
+        k.rect(4, CELL_SIZE * 3),
+        k.pos(OFFSET_X + CELL_SIZE * 2, OFFSET_Y),
+        k.color(255, 255, 255),
+      ]);
+      k.add([
+        k.rect(CELL_SIZE * 3, 4),
+        k.pos(OFFSET_X, OFFSET_Y + CELL_SIZE),
+        k.color(255, 255, 255),
+      ]);
+      k.add([
+        k.rect(CELL_SIZE * 3, 4),
+        k.pos(OFFSET_X, OFFSET_Y + CELL_SIZE * 2),
+        k.color(255, 255, 255),
       ]);
 
-      // Imprimir los 4 jugadores y sus puntos
-      for (let i = 0; i < 4; i++) {
-        k.add([
-          k.text(`${names[i]}: ${scores[i]} pts`, { size: 32 }),
-          k.pos(k.width() / 2, k.height() / 2 - 100 + i * 45),
+      const cellsEntities: any[] = [];
+
+      // Áreas clickeables
+      for (let i = 0; i < 9; i++) {
+        const x = OFFSET_X + (i % 3) * CELL_SIZE + CELL_SIZE / 2;
+        const y = OFFSET_Y + Math.floor(i / 3) * CELL_SIZE + CELL_SIZE / 2;
+
+        const cell = k.add([
+          k.rect(CELL_SIZE - 10, CELL_SIZE - 10),
+          k.pos(x, y),
           k.anchor("center"),
+          k.opacity(0), // Transparente pero clickeable
+          k.area(),
+          "cell",
+          { index: i },
         ]);
+
+        cellsEntities.push(cell);
       }
 
-      // Botón para reiniciar todo el torneo
-      const btn = k.add([
-        k.rect(300, 50, { radius: 8 }),
-        k.pos(k.width() / 2, k.height() / 2 + 120),
-        k.anchor("center"),
-        k.color(50, 200, 50),
-        k.area(),
-      ]);
-      k.add([
-        k.text("NUEVO TORNEO", { size: 20 }),
-        k.pos(k.width() / 2, k.height() / 2 + 120),
-        k.anchor("center"),
-        k.color(0, 0, 0),
-      ]);
+      // --- LÓGICA DE VICTORIA ---
+      const checkWin = (boardState: (string | null)[], playerId: string) => {
+        const winPatterns = [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8], // Filas
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8], // Columnas
+          [0, 4, 8],
+          [2, 4, 6], // Diagonales
+        ];
+        return winPatterns.some((pattern) =>
+          pattern.every((index) => boardState[index] === playerId)
+        );
+      };
 
-      btn.onClick(() => {
-        // Reiniciamos toda la escena volviéndola a llamar
-        k.go("Tic-tac-toe");
+      const checkDraw = (boardState: (string | null)[]) => {
+        return boardState.every((cell) => cell !== null);
+      };
+
+      // --- EVENTOS Y LÓGICA MULTIJUGADOR ---
+      applyTurn(firstTurnId, 15);
+
+      k.onClick("cell", (cell) => {
+        if (!isMyTurn || locked) return;
+        if (board[cell.index] !== null) return; // Celda ocupada
+
+        // Emitimos la acción al servidor
+        socket.emit("game:action", { action: "PLACE_MARK", cellIndex: cell.index });
       });
-    }
 
-    // --- DETECCIÓN DE CLICS EN LAS CASILLAS ---
-    for (let i = 0; i < 9; i++) {
-      const x = (i % 3) * 100 + (tableroX + 50);
-      const y = Math.floor(i / 3) * 100 + (offset + 50);
+      socket.on("game:turn_sync", (data: { activePlayerId: string; timeoutSeconds: number }) => {
+        applyTurn(data.activePlayerId, data.timeoutSeconds);
+      });
 
-      const celda = k.add([
-        k.rect(90, 90),
-        k.pos(x, y),
-        k.anchor("center"),
-        k.opacity(0),
-        k.area(),
-        "area_clic",
-      ]);
+      socket.on("game:action", (data: any) => {
+        if (data.action === "PLACE_MARK") {
+          const playerIndex = players.findIndex((p) => p.id === data.playerId);
+          if (playerIndex === -1) return;
 
-      celda.onClick(() => {
-        if (!gameActive || board[i] !== null) return;
+          const symbol = PLAYER_SYMBOLS[playerIndex % PLAYER_SYMBOLS.length];
+          const color = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
 
-        board[i] = currentPlayer;
-        updateVisuals();
+          board[data.cellIndex] = data.playerId;
+          const targetCell = cellsEntities[data.cellIndex];
 
-        const winner = checkWin();
-        if (winner) {
-          showMatchResult(winner);
-        } else {
-          currentPlayer = currentPlayer === "X" ? "O" : "X";
-          let nombreTurno = currentPlayer === "X" ? names[idxX] : names[idxO];
-          status.text = `Turno de: ${nombreTurno} (${currentPlayer})`;
+          // Dibujar la marca visual
+          k.add([
+            k.text(symbol, { size: CELL_SIZE * 0.6 }),
+            k.pos(targetCell.pos),
+            k.anchor("center"),
+            k.color(color),
+          ]);
+
+          // Comprobar estado final
+          if (checkWin(board, data.playerId)) {
+            locked = true;
+            players[playerIndex].score += 3; // Otorga 3 puntos por ganar
+            updatePlayerInfoUI();
+
+            k.add([
+              k.text(`¡${players[playerIndex].username} GANA!`, { size: 50 }),
+              k.pos(k.width() / 2, k.height() * 0.2),
+              k.anchor("center"),
+              k.color(color),
+            ]);
+
+            if (isMyTurn) {
+              k.wait(2, () => {
+                const finalScores: Record<string, number> = {};
+                players.forEach((p) => {
+                  finalScores[p.id] = p.score;
+                });
+                socket.emit(SocketEvents.GAME_END_MINI, { scores: finalScores });
+              });
+            }
+          } else if (checkDraw(board)) {
+            locked = true;
+
+            k.add([
+              k.text(`¡EMPATE!`, { size: 50 }),
+              k.pos(k.width() / 2, k.height() * 0.2),
+              k.anchor("center"),
+              k.color(200, 200, 200),
+            ]);
+
+            if (isMyTurn) {
+              k.wait(2, () => {
+                const finalScores: Record<string, number> = {};
+                players.forEach((p) => {
+                  finalScores[p.id] = p.score;
+                });
+                socket.emit(SocketEvents.GAME_END_MINI, { scores: finalScores });
+              });
+            }
+          } else {
+            // Si nadie gana ni empata, el jugador activo pasa su turno
+            if (isMyTurn) socket.emit("game:end_turn", { passTurn: true });
+          }
         }
       });
+
+      k.onSceneLeave(() => {
+        socket.off("game:turn_sync");
+        socket.off("game:action");
+
+        turnBannerComponent.destroy();
+        timerComponent.destroy();
+      });
     }
-  });
+  );
 }
