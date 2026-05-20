@@ -1,8 +1,9 @@
 import axios from "axios";
 import { RoomResponse } from "../types/RoomSocket";
 import { gameCatalog } from "../main";
+import { Environment } from "../enviroments";
 
-const API_URL = "https://playu.orchfr.duckdns.org/api/v1";
+const API_URL = `${Environment.BASE_URL}/api/v1`;
 
 //http://localhost:3000/api/v1/
 //https://playu.orchfr.duckdns.org/api/v1
