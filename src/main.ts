@@ -30,4 +30,4 @@ socket.on("state:change", (data: { scene: string; params: any }) => {
 k.go("menu");
 export default k;
 
-export const gameCatalog: string[] = ["tutti-frutti"];
+export const gameCatalog: string[] = ["tic-tac-toe"];
