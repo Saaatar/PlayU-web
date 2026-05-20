@@ -3,6 +3,7 @@ import { registerCatchFaceGame } from "./games/catch-face";
 import { registerMemocatGame } from "./games/memocat";
 import { registerTuttiFruttiMix } from "./games/tuttiFruttiMix";
 import { registerTicTacToe } from "./games/tic-tac-toe";
+import { registerSecuenciaGame } from "./games/secuencia";
 import { mainPage } from "./scenes/mainPage";
 import { scoreBoard } from "./scenes/scoreBoard";
 import { socket } from "./services/sockets";
@@ -19,6 +20,7 @@ registerCatchFaceGame(k);
 registerMemocatGame(k);
 registerTuttiFruttiMix(k);
 registerTicTacToe(k);
+registerSecuenciaGame(k);
 mainPage(k);
 scoreBoard(k);
 
