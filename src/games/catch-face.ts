@@ -14,9 +14,7 @@ export function registerCatchFaceGame(k: KAPLAYCtx) {
 
     //game data
     const VELOCIDAD = 1000;
-    var scoreCounter: number = 0;
     var remainTime: number = 30;
-
     const score = k.add([k.text("Score: 0"), k.pos(90, 24), k.anchor("center"), { value: 0 }]);
 
     const timerLabel = k.add([

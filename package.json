@@ -8,15 +8,22 @@
     "zip": "npm run build && mkdir -p dist && zip -r dist/game.zip dist -x \"**/.DS_Store\"",
     "check": "tsc",
     "format": "prettier --write \"src/**/*.{ts,js}\" \"*.json\" \".github/**/*.yml\"",
-    "format:check": "prettier --check \"src/**/*.{ts,js}\" \"*.json\" \".github/**/*.yml\""
+    "format:check": "prettier --check \"src/**/*.{ts,js}\" \"*.json\" \".github/**/*.yml\"",
+    "lint": "npx eslint",
+    "lint:fix": "npx eslint --fix"
   },
   "dependencies": {
-    "kaplay": "^3001.0.19"
+    "axios": "^1.15.0",
+    "kaplay": "^3001.0.19",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.6.0",
+    "eslint": "^10.2.1",
     "prettier": "^3.8.2",
-    "typescript": "^6.0.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.1",
     "vite": "^8.0.8"
   }
 }
