@@ -16,7 +16,6 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function registerMemocatGame(k: KAPLAYCtx) {
-  // CORRECCIÓN 3: Mover la carga de sprites FUERA de la escena para que solo ocurra una vez
   ANIMALS.forEach((animal) => {
     k.loadSprite(animal, `/sprites/gatos/${animal}.webp`);
   });
@@ -57,7 +56,7 @@ export function registerMemocatGame(k: KAPLAYCtx) {
           k.color(i === currentPlayer ? 255 : 200, 200, 200),
         ]);
 
-        playerInfoUI.add(text); // Ahora esto funcionará perfecto
+        playerInfoUI.add(text);
         xPos += 150;
       });
     };
@@ -77,8 +76,8 @@ export function registerMemocatGame(k: KAPLAYCtx) {
       flipped.forEach((card) => flip(card, false));
       flipped = [];
       locked = false;
-      elapsedTime = 0; // Reiniciamos el reloj
-      currentPlayer = (currentPlayer + 1) % players.length; // Pasamos al siguiente
+      elapsedTime = 0;
+      currentPlayer = (currentPlayer + 1) % players.length;
       updatePlayerInfo();
       updateTimer();
     }
@@ -139,7 +138,7 @@ export function registerMemocatGame(k: KAPLAYCtx) {
 
         flipped = [];
         locked = false;
-        elapsedTime = 0; // Reinicia el tiempo porque acertó y conserva el turno
+        elapsedTime = 0;
         updatePlayerInfo();
 
         if (matched === ANIMALS.length) {
@@ -167,13 +166,11 @@ export function registerMemocatGame(k: KAPLAYCtx) {
       }
     });
 
-    // CORRECCIÓN 1: El temporizador cuenta siempre, a menos que se esté evaluando un match
     k.onUpdate(() => {
       if (!locked) {
         elapsedTime += k.dt();
         updateTimer();
 
-        // Si pasan los 15 segundos, cambiamos de turno automáticamente
         if (elapsedTime >= FLIP_TIMEOUT) {
           passTurn();
         }
