@@ -106,7 +106,7 @@ export function registerTuttiFruttiMix(k: KAPLAYCtx) {
 
       // --- DIBUJAR TABLERO ---
       const instruccion = k.add([
-        k.text("¡MEMORIZA LAS POSICIONES!", { size: 32, font: "sans-serif" }),
+        k.text("¡MEMORIZA LAS POSICIONES!", { size: 25, font: "Jersey" }),
         k.pos(k.width() * 0.5, k.height() * 0.2),
         k.anchor("center"),
         k.color(255, 200, 50),
